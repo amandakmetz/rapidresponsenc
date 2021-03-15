@@ -11,22 +11,9 @@ import cenpy as c
 import pandas as pd
 import geopandas as gpd
 
-
-##### ---------------------------------------------------CENSUS BLOCKS, DEC 10
-
 ##### SETUP
 state_name = 'NC'
 state_fips = '37'
-
-# set census API key
-c.set_sitekey('APIKEY', overwrite=True)
-
-# specify block shapefile if needed
-#block_file = './NC/tl_2010_37_tabblock10/tl_2010_37_tabblock10.shp'
-
-# specify output files
-output_csv = './NC/Census/nc_blocks_dec10.csv'
-output_shp = './NC/Shapefiles/nc_blocks_dec10.shp'
 
 # get county crosswalk for state
 state_cross = pd.read_csv('./county_fips/{0}_county_cross.csv'.format(state_name.lower()))
@@ -35,10 +22,23 @@ state_cross['fips'] = state_cross['fips'].map(lambda x: str(x).zfill(3))
 # specify counties
 state_counties = list(state_cross['fips'])
 
+# set census API key
+c.set_sitekey('APIKEY', overwrite=True)
+
+##### ---------------------------------------------------CENSUS BLOCKS, DEC 10
+
+# specify block shapefile if needed
+block_file = './NC/tl_2020_37_tabblock10/tl_2020_37_tabblock10.shp'
+
+# specify output files
+output_csv = './NC/Census/nc_blocks_dec10.csv'
+output_shp = './NC/Shapefiles/nc_blocks_dec10.shp'
+
 ##### GET DATA
 
-# check out ACS codes available
+# check out all codes available
 codes = c.explorer.available()
+
 DEC_codes = codes.loc[codes.index.str.contains('DECENNIAL')]['title']
 
 # explain dataset
@@ -49,6 +49,10 @@ c.explorer.explain(dataset)
 
 # set connection to survey / year
 conn = c.remote.APIConnection('DECENNIALSF12010')
+
+# check out all variables in current connection
+test = conn.geographies
+test = conn.geographies['fips'].head(100)
 
 var = conn.variables
 print('Number of variables in', dataset, ':', len(var))
@@ -102,7 +106,6 @@ conn.mapservice.layers
 conn.mapservice.layers[18]
 
 # query all available blocks
-
 geodata = gpd.GeoDataFrame()
 
 # grabbing blocks from every county
@@ -133,54 +136,42 @@ joined_data.to_file(output_shp)
 
 #### IF USING EXISTING SHAPEFILE - JOIN TO GEOMETRY
 
-# # downloads are limited to 100000 blocks per request
+# downloads are limited to 100000 blocks per request
 
-# # read in blocks
-# blocks = gpd.read_file(block_file)
+# read in blocks
+blocks = gpd.read_file(block_file)
 
-# blocks.dtypes
-# blocks['GEOID10'].head()
-# data['geoid'].head()
+blocks.dtypes
+blocks['GEOID10'].head()
+data['geoid'].head()
 
-# # check for same number of blocks in both
-# print(len(blocks) == len(data))
+# check for same number of blocks in both
+print(len(blocks) == len(data))
 
-# # merge shp and df
-# joined_blocks = blocks.merge(data, left_on='GEOID10', right_on='geoid',how='left')
-# joined_blocks.dtypes
+# merge shp and df
+joined_blocks = blocks.merge(data, left_on='GEOID10', right_on='geoid',how='left')
+joined_blocks.dtypes
 
-# #write to file    
-# joined_blocks.to_file(output_shp)
+#write to file    
+joined_blocks.to_file(output_shp)
 
 
 ##### ---------------------------------------------------BLOCK GROUPS, ACS 19
 
-##### SETUP
-state_name = 'NC'
-state_fips = '37'
-
-# set census API key
-c.set_sitekey('APIKEY', overwrite=True)
-
-# specify block shapefile if needed
+# specify block group shapefile if needed
 #bg_file = './NC/tl_2019_37_bg/tl_2019_37_bg.shp'
 
 # specify output files
 output_csv = './NC/Census/nc_bg_acs19.csv'
 output_shp = './NC/Shapefiles/nc_bg_acs19.shp'
 
-# get county crosswalk for state
-state_cross = pd.read_csv('./county_fips/{0}_county_cross.csv'.format(state_name.lower()))
-state_cross['fips'] = state_cross['fips'].map(lambda x: str(x).zfill(3)) 
-
-# specify counties
-state_counties = list(state_cross['fips'])
-
 ##### GET DATA
 
 # check out ACS codes available
 codes = c.explorer.available()
-ACS_codes = codes.loc[codes.index.str.contains('5Y2019')]['title']
+
+# check out codes for ACS 5Yr 2019 only
+ACScodes = codes.loc[codes.index.str.contains('5Y2019')]['title']
 
 # explain dataset
 datasets = list(c.explorer.available(verbose=True).items())
@@ -191,6 +182,10 @@ c.explorer.explain(dataset)
 # set connection to survey / year
 conn = c.remote.APIConnection('ACSDT5Y2019')
 
+# check out the geographic filter requirements
+test = conn.geographies
+test = conn.geographies['fips'].head(100)
+
 # check out all variables in current ACS connection
 var = conn.variables
 print('Number of variables in', dataset, ':', len(var))
@@ -199,6 +194,7 @@ conn.variables.head()
 # geo_unit and geo_filter are both necessary arguments for the query() function. 
 # geo_unit specifies the scale at which data should be taken. geo_filter then 
 # creates a filter to ensure too much data is not downloaded. 
+
 g_unit = 'block group:*'
 g_filter = {'state':'37',
             'county':'*',
@@ -207,6 +203,9 @@ g_filter = {'state':'37',
 # find list of variables in relevant table
 cols = list(conn.varslike('B03002').index)
 cols.extend(['NAME', 'GEO_ID'])
+
+# #set empty dataframe to fill
+# data = pd.DataFrame(columns=census_vars + ['state', 'county', 'tract', 'blockgroup'])
 
 # query current ACS connection with columns, filter and geofilter settings
 data = conn.query(cols, geo_unit=g_unit, geo_filter=g_filter)
@@ -286,22 +285,21 @@ joined_data.to_file(output_shp)
 
 #### IF USING EXISTING SHAPEFILE - JOIN TO GEOMETRY
 
-# # downloads are limited to 100000 blocks
+# downloads are limited to 100000 blocks
 
-# # read in blocks
-# blocks = gpd.read_file(block_file)
-# blocks.dtypes
-# blocks['GEOID10'].head()
-# data['geoid'].head()
+# read in blocks
+blocks = gpd.read_file(block_file)
+blocks.dtypes
+blocks['GEOID10'].head()
+data['geoid'].head()
 
-# # check for same number of blocks in both
-# print(len(blocks) == len(data))
+# check for same number of blocks in both
+print(len(blocks) == len(data))
 
-# # merge shp and df
-# joined_blocks = blocks.merge(data, left_on='GEOID10', right_on='geoid',how='left')
-# joined_blocks.dtypes
+# merge shp and df
+joined_blocks = blocks.merge(data, left_on='GEOID10', right_on='geoid',how='left')
+joined_blocks.dtypes
 
-
-# #write to file    
-# joined_blocks.to_file(output_shp)
+#write to file    
+joined_blocks.to_file(output_shp)
 
