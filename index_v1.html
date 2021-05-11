@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>DAS Demo: Sumter County, GA School Board Districts</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js"></script>
+        <link
+            href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css"
+            rel="stylesheet"
+        />
+        <link href="main.css" rel="stylesheet">
+    </head>
+    <body>
+        <div id="map"></div>
+        <div class="map-overlay" id="features">
+        <h2>DAS Demo: Sumter County, GA School Board Districts</h2>
+        <div id="pd"><p>Hover over a district</p></div>
+        </div>
+        <div class="map-overlay" id="legend"></div>
+        
+        <script>
+        // define access token
+        mapboxgl.accessToken = 'pk.eyJ1Ijoib3BlbnByZWNpbmN0cyIsImEiOiJjanVqMHJtM3gwMXdyM3lzNmZkbmpxaXpwIn0.ZU772lvU-NeKNFAkukT6hw';
+        
+        //create map
+        var map = new mapboxgl.Map({
+                                container: 'map', // container id
+                                style: 'mapbox://styles/openprecincts/ckmwh0a5q1hok17mts9qkwrsb', // map style URL from Mapbox Studio
+                                center: [-84.072763, 31.990011],
+                                minZoom: 9,
+                                maxZoom: 15,
+                                zoom: 10});
+        
+        // wait for map to load before adjusting it
+        map.on('load', function () {
+
+                // map.addLayer({
+                //     "id": "ga-scsdnew-dp12-2",
+                // })
+
+            // // make a pointer cursor
+            // map.getCanvas().style.cursor = 'default';
+            
+            // // set map bounds to the continental US
+            // map.fitBounds([
+            // [-88.75, 35.2],
+            // [-84.6, 29.8]
+            // ]);
+            
+            // make a pointer cursor
+            // map.getCanvas().style.cursor = 'default';
+            // map.addLayer({
+            // 'id': 'ga-scsdnew-dp12-2',
+            // 'type': 'fill',
+            // 'source': 'states',
+            // 'layout': {},
+            // 'paint': {
+            // // 'fill-color': '#627BC1',
+            // 'fill-opacity': [
+            // 'case',
+            // ['boolean', ['feature-state', 'hover'], false],
+            // 1,
+            // 0.5
+            // ]
+            // }
+            // });
+
+            // define layer names
+            var layers = [
+            '-1% - -0.5%',
+            '-0.5% - -0.25%',
+            '-0.25% - -0.1%',
+            '-0.1% - 0.1%',
+            '0.1% - 0.25%',
+            '0.25% - 0.5%',
+            '0.5% - 1%'
+            ];
+            var colors = [
+            '#d7191c',
+            '#f17c4a',
+            '#fec981',
+            '#ffffc0',
+            '#c4e687',
+            '#77c35c',
+            '#1a9641'
+            ];
+            
+            // create legend
+            for (i = 0; i < layers.length; i++) {
+                var layer = layers[i];
+                var color = colors[i];
+                var item = document.createElement('div');
+                var key = document.createElement('span');
+                key.className = 'legend-key';
+                key.style.backgroundColor = color;
+                
+                var value = document.createElement('span');
+                value.innerHTML = layer;
+                item.appendChild(key);
+                item.appendChild(value);
+                legend.appendChild(item);
+            }
+            
+            // change info window on hover
+            map.on('mousemove', function (e) {
+                var districts = map.queryRenderedFeatures(e.point, {
+                layers: ['ga-scsdnew-dp12-2']
+                });
+            
+                if (districts.length > 0) {
+                    document.getElementById('pd').innerHTML =  'Total population in District ' + districts[0].properties.DISTRICT + ': ' +districts[0].properties.tot +
+                    '\nNHBVAP deviation: ' + districts[0].properties.rNHBVAP
+                    // '</strong></h3><p><strong><em>' +
+                    //     alhousedp122[0].properties.density +
+                    // '</strong> people per square mile</em></p>';
+                } else {
+                    document.getElementById('pd').innerHTML =
+                    '<p>Hover over a district</p>';
+                }
+            });
+
+            map.on('mousemove', function (e) {
+
+                var districts = map.queryRenderedFeatures(e.point, {
+                layers: ['ga-scsdnew-dp12-2']
+                });
+
+                if (districts.length > 0) {
+                    map.setFeatureState({source: 'ga-scsdnew-dp12-2', id: districts[0]}, { hover: true});
+                    // console.log(districts[0].layer.paint);
+                    // districts[0].layer.paint = {
+                    //     'fill-opacity' : 1
+                    // }
+                } else {
+                    console.log('nothing')
+                }
+
+            });
+            
+            // // When the mouse leaves the state-fill layer, update the feature state of the
+            // // previously hovered feature.
+            // map.on('mouseleave', 'ga-scsdnew-dp12-2', function () {
+            // if (hoveredStateId !== null) {
+            // map.setFeatureState(
+            // { source: 'states', id: hoveredStateId },
+            // { hover: false }
+            // );
+            // }
+            // hoveredStateId = null;
+            // });
+        });
+        </script>
+    </body>
+</html>
